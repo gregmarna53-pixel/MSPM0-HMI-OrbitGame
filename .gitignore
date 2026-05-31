@@ -1,0 +1,12 @@
+*.o
+*.d
+*.crf
+*.htm
+*.dep
+*.lnp
+*.axf
+*.sct
+*.uvgui.*
+*.uvoptx
+Objects/
+Listings/
