@@ -1,51 +1,26 @@
-## Example Summary
+# 🎮 MSPM0-HMI-OrbitGame
 
-Toggles three GPIO pins using HW toggle register.
+基于 TI MSPM0G3507 与 USART HMI 串口屏的轻量级嵌入式 2D 交互游戏框架。
 
-## Peripherals & Pin Assignments
+## 💡 项目简介
+本项目是一个运行在 Cortex-M0+ 极低资源环境下的多对象物理渲染引擎框架。实现了从按键硬件中断捕获、串口指令下发，到多图层无闪烁渲染、独立对象池管理的完整闭环。玩家可通过点击串口屏上的实体按钮，发射小球切入中心轨道，并实现多颗小球同屏流畅公转。
 
-| Peripheral | Pin | Function |
-| --- | --- | --- |
-| GPIOB | PB22 | Standard Output |
-| GPIOB | PB26 | Standard Output |
-| GPIOB | PB27 | Standard Output |
-| GPIOB | PB16 | Standard Output |
-| SYSCTL |  |  |
-| EVENT |  |  |
-| DEBUGSS | PA20 | Debug Clock |
-| DEBUGSS | PA19 | Debug Data In Out |
+## 🛠️ 硬件架构
+* **主控芯片**：Texas Instruments MSPM0G3507 (ARM Cortex-M0+)
+* **交互显示**：陶晶驰 USART HMI 串口屏
+* **通信协议**：UART (TX/RX 交叉连接，共地，波特率 115200)
 
-## BoosterPacks, Board Resources & Jumper Settings
+## 🧩 核心软件设计
 
-Visit [LP_MSPM0G3507](https://www.ti.com/tool/LP-MSPM0G3507) for LaunchPad information, including user guide and hardware files.
+### 1. 三段式状态机 (State Machine)
+彻底剥离了阻塞式延时（Blocking Delay），将系统划分为三个严格的状态，把主循环控制权交还给核心引擎：
+- **状态 0**：待机监听，维持系统心跳。
+- **状态 1**：发射响应，利用线性插值算法计算直线飞行轨迹。
+- **状态 2**：轨道公转，运用三角函数实时计算向心坐标。
 
-| Pin | Peripheral | Function | LaunchPad Pin | LaunchPad Settings |
-| --- | --- | --- | --- | --- |
-| PB22 | GPIOB | PB22 | J27_5 | <ul><li>PB22 can be connected to LED2 Blue<br><ul><li>`J5 ON` Connect to LED2 Blue<br><li>`J15 OFF` Disconnect from LED2 Blue</ul></ul> |
-| PB26 | GPIOB | PB26 | J27_8 | <ul><li>PB26 can be connected to LED2 Red<br><ul><li>`J6 ON` Connect to LED2 Red<br><li>`J6 OFF` Disconnect from LED2 Red</ul></ul> |
-| PB27 | GPIOB | PB27 | J27_10 | <ul><li>PB27 can be connected to LED2 Green<br><ul><li>`J7 ON` Connect to LED2 Green<br><li>`J7 OFF` Disconnect from LED2 Green</ul></ul> |
-| PB16 | GPIOB | PB16 | J2_11 | <ul><li>This pin can be used for testing purposes in boosterpack connector<ul><li>Pin can be reconfigured for general purpose as necessary</ul></ul> |
-| PA20 | DEBUGSS | SWCLK | N/A | <ul><li>PA20 is used by SWD during debugging<br><ul><li>`J101 15:16 ON` Connect to XDS-110 SWCLK while debugging<br><li>`J101 15:16 OFF` Disconnect from XDS-110 SWCLK if using pin in application</ul></ul> |
-| PA19 | DEBUGSS | SWDIO | N/A | <ul><li>PA19 is used by SWD during debugging<br><ul><li>`J101 13:14 ON` Connect to XDS-110 SWDIO while debugging<br><li>`J101 13:14 OFF` Disconnect from XDS-110 SWDIO if using pin in application</ul></ul> |
+### 2. 对象池内存管理 (Object Pool)
+为了避免单片机在运行时因动态内存分配（`malloc`）导致内存碎片化，系统预先在全局 SRAM 区申请了静态 `GameObject` 结构体数组。通过遍历活跃对象池，实现了同屏多颗小球的独立帧驱动（Frame Update）。
 
-### Device Migration Recommendations
-This project was developed for a superset device included in the LP_MSPM0G3507 LaunchPad. Please
-visit the [CCS User's Guide](https://software-dl.ti.com/msp430/esd/MSPM0-SDK/latest/docs/english/tools/ccs_ide_guide/doc_guide/doc_guide-srcs/ccs_ide_guide.html#sysconfig-project-migration)
-for information about migrating to other MSPM0 devices.
-
-### Low-Power Recommendations
-TI recommends to terminate unused pins by setting the corresponding functions to
-GPIO and configure the pins to output low or input with internal
-pullup/pulldown resistor.
-
-SysConfig allows developers to easily configure unused pins by selecting **Board**→**Configure Unused Pins**.
-
-For more information about jumper configuration to achieve low-power using the
-MSPM0 LaunchPad, please visit the [LP-MSPM0G3507 User's Guide](https://www.ti.com/lit/slau873).
-
-## Example Usage
-Compile, load and run the example.
-RGB LEDs will toggle with red being opposite of blue and green.
-
-USER_TEST_PIN GPIO will mimic the behavior of the LED1 and LED3 pins on the
-BoosterPack header and can be used to verify the LED behavior.
+## 🔥 踩坑与底层优化记录
+* **内存栈溢出 (Stack Overflow) 攻防**：初期在局部变量中格式化浮点数 `sprintf("%f")` 及申请大型结构体时，导致内核 HardFault 死机。最终通过将浮点运算与整型指令下发解耦，并将对象池移至全局内存区，彻底解决了 M0+ 内核 512B 极小栈空间的限制。
+* **Alpha 通道与图层剔除渲染**：传统 2D 绘图中采用纯色 `fill` 擦除旧帧会导致背景破坏。本项目通过引入 HMI 硬件级的 `Crop Image` (切图) 模式，配合直接操控控件坐标 (`p1.x`, `p1.y`)，实现了完美无黑边的 3D 小球悬浮效果，极大地降低了 MCU 的渲染负担。
