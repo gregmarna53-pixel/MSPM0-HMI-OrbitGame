@@ -36,6 +36,7 @@
 #define DELAY (600000)  
 volatile uint8_t game_started = 0;
 volatile uint8_t launch_ball = 0;
+volatile uint8_t is_collision = 0;
 #define MAX_BALLS 20 // 
 
 
@@ -60,7 +61,44 @@ void SendToScreen(char *cmd) {
     UART_SendByte(UART0, 0xFF);
 }
 
+void LED_All_Off(void) {
+    DL_GPIO_clearPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_0_PIN | GPIO_LEDS_PIN_1_PIN | GPIO_LEDS_PIN_2_PIN | GPIO_LEDS_PIN_3_PIN | GPIO_LEDS_PIN_4_PIN );
+}
+// ????
+void LED_Only_Green(void) {
+    LED_All_Off();
+    DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_0_PIN| GPIO_LEDS_PIN_4_PIN);
+	
+}
+// ????
+void LED_Only_Red(void) {
+    LED_All_Off();
+    DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_0_PIN| GPIO_LEDS_PIN_3_PIN);
+}
+// ??????(??????)
+void LED_Flow_Run(void) {
+    static uint8_t flow_index = 0;
+    LED_All_Off();
+    switch(flow_index) {
+        case 0: DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_0_PIN); break;
+        case 1: DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_1_PIN); break;
+        case 2: DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_2_PIN); break;
+        case 3: DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_3_PIN); break;
+        case 4: DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_PIN_4_PIN); break;
+    }
+    flow_index = (flow_index + 1) % 5;
+		
+}
 
+
+void Beep_Play1(uint16_t time_ms)
+{
+    for(uint32_t i=0; i < time_ms * 10; i++){
+        DL_GPIO_togglePins(GPIO_LEDS_PORT, GPIO_LEDS_BEEP_PIN); 
+        delay_cycles(10000);  // ????,????,??????
+    }
+    DL_GPIO_clearPins(GPIO_LEDS_PORT, GPIO_LEDS_BEEP_PIN);
+}
 
 
 
@@ -80,7 +118,7 @@ typedef struct {
 } GameObject;
 
 	GameObject balls[MAX_BALLS];
-
+int active_balls = 0;
 void Rotate_Image(GameObject *obj)
 {
    char buf[64];
@@ -142,34 +180,124 @@ int  step = 8;
         old_x = new_x; 
         old_y = new_y;
     }
+		for(int i=0;i<active_balls;i++){
+						 Rotate_Image(&balls[i]);
+						}
+   
 		if(old_y <= 274){
+				
+			
+			
 		  return;
 		}
 }}
+// ==========================================
+// ???????? (?? 1 ????,0 ????)
+// ??:????????????????????
+// ==========================================
+uint8_t Check_Collision(int x1, int y1, int x2, int y2) {
+    // ?? X ?? Y ?????
+    int dx = x1 - x2;
+    int dy = y1 - y2;
+    
+    // ???????,??????????? sqrt() ??!
+    if ((dx * dx + dy * dy) < (28* 28)) {
+        return 1; // ?? ????!
+    }
+    return 0;     // ??? ??
+}
+// ==========================================
+// ???????
+// ==========================================
+void Game_Over() {
+    char buf[64];
+    
+    // 1. ??????????? Game Over!
+    SendToScreen("t0.txt=\"Game Over!\"");
+    
+    // 2. ?????(?????????????)
+    active_balls = 0;
+    // SendToScreen("fill 0,0,320,240,0");
+ 
+}
+
+// ????????,??????
+void Detect_All_Balls_Collision(void)
+{
+    if(active_balls < 2)  // ??2??,?????
+    {
+        is_collision = 0;
+        return;
+    }
+
+    is_collision = 0;
+    // ????:i ? j ????,??????
+    for(int i = 0; i < active_balls; i++)
+    {
+        // ?????????(old_x/old_y ???????)
+        int ball1_x = balls[i].old_x;
+        int ball1_y = balls[i].old_y;
+
+        for(int j = i + 1; j < active_balls; j++)
+        {
+            int ball2_x = balls[j].old_x;
+            int ball2_y = balls[j].old_y;
+
+            // ??????
+            if(Check_Collision(ball1_x, ball1_y, ball2_x, ball2_y))
+            {
+                is_collision = 1;
+                goto COLLISION_END; // ???????????
+            }
+        }
+    }
+COLLISION_END:
+    return;
+}
+
+void Collision_Response(void)
+{
+    if(is_collision == 0)
+        return;
+
+    // 1. ?????(????Beep??)
+    Beep_Play1(200);
+    // 2. LED ??:???
+    LED_Only_Red();
+    // 3. ??:?????????
+    Game_Over();
+    // 4. ????
+    is_collision = 0;
+}
+
+
 
 // ====================== ??? ======================
 int main(void)
 {
     SYSCFG_DL_init();
     __enable_irq();
+		LED_All_Off();
     // ?? UART0 ?????(??? SysConfig ???? RX Interrupt ????)
     NVIC_EnableIRQ(UART_0_INST_INT_IRQN);
 	
-int active_balls = 0;
+
 		
   
     /* ====== ????:?????? ====== */
     while (game_started == 0) {
         // ?????????????,?????? 0x5A ??
-        DL_GPIO_togglePins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
-        delay_cycles(4000000); 
+				DL_GPIO_togglePins(GPIO_LEDS_PORT,GPIO_LEDS_USER_LED_1_PIN);
+				delay_cycles(100000);
+        
     }
 
     /* ====== ????:????,???????? ====== */
     // ?????????????
     SendToScreen("t0.txt=\"Score: 0\"");
-	
+		
 while(1){
+	LED_Flow_Run();
 	delay_cycles(DELAY);
 		if(launch_ball == 1){
 			// ????:?????????????
@@ -188,7 +316,8 @@ while(1){
 		for(int i=0;i<active_balls;i++){
 						 Rotate_Image(&balls[i]);
 						}
-       
+    Detect_All_Balls_Collision();
+    Collision_Response();
      
 	}
 }

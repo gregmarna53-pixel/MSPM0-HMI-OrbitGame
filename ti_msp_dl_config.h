@@ -100,18 +100,27 @@ extern "C" {
 /* Port definition for Pin Group GPIO_LEDS */
 #define GPIO_LEDS_PORT                                                   (GPIOA)
 
+/* Defines for PIN_0: GPIOA.12 with pinCMx 34 on package pin 5 */
+#define GPIO_LEDS_PIN_0_PIN                                     (DL_GPIO_PIN_12)
+#define GPIO_LEDS_PIN_0_IOMUX                                    (IOMUX_PINCM34)
+/* Defines for PIN_1: GPIOA.13 with pinCMx 35 on package pin 6 */
+#define GPIO_LEDS_PIN_1_PIN                                     (DL_GPIO_PIN_13)
+#define GPIO_LEDS_PIN_1_IOMUX                                    (IOMUX_PINCM35)
+/* Defines for PIN_2: GPIOA.17 with pinCMx 39 on package pin 10 */
+#define GPIO_LEDS_PIN_2_PIN                                     (DL_GPIO_PIN_17)
+#define GPIO_LEDS_PIN_2_IOMUX                                    (IOMUX_PINCM39)
+/* Defines for PIN_3: GPIOA.15 with pinCMx 37 on package pin 8 */
+#define GPIO_LEDS_PIN_3_PIN                                     (DL_GPIO_PIN_15)
+#define GPIO_LEDS_PIN_3_IOMUX                                    (IOMUX_PINCM37)
+/* Defines for PIN_4: GPIOA.16 with pinCMx 38 on package pin 9 */
+#define GPIO_LEDS_PIN_4_PIN                                     (DL_GPIO_PIN_16)
+#define GPIO_LEDS_PIN_4_IOMUX                                    (IOMUX_PINCM38)
+/* Defines for BEEP: GPIOA.27 with pinCMx 60 on package pin 31 */
+#define GPIO_LEDS_BEEP_PIN                                      (DL_GPIO_PIN_27)
+#define GPIO_LEDS_BEEP_IOMUX                                     (IOMUX_PINCM60)
 /* Defines for USER_LED_1: GPIOA.14 with pinCMx 36 on package pin 7 */
 #define GPIO_LEDS_USER_LED_1_PIN                                (DL_GPIO_PIN_14)
 #define GPIO_LEDS_USER_LED_1_IOMUX                               (IOMUX_PINCM36)
-/* Defines for USER_LED_2: GPIOA.26 with pinCMx 59 on package pin 30 */
-#define GPIO_LEDS_USER_LED_2_PIN                                (DL_GPIO_PIN_26)
-#define GPIO_LEDS_USER_LED_2_IOMUX                               (IOMUX_PINCM59)
-/* Defines for USER_LED_3: GPIOA.27 with pinCMx 60 on package pin 31 */
-#define GPIO_LEDS_USER_LED_3_PIN                                (DL_GPIO_PIN_27)
-#define GPIO_LEDS_USER_LED_3_IOMUX                               (IOMUX_PINCM60)
-/* Defines for USER_TEST: GPIOA.12 with pinCMx 34 on package pin 5 */
-#define GPIO_LEDS_USER_TEST_PIN                                 (DL_GPIO_PIN_12)
-#define GPIO_LEDS_USER_TEST_IOMUX                                (IOMUX_PINCM34)
 
 /* clang-format on */
 
