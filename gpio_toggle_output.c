@@ -34,7 +34,9 @@
 #include <stdio.h>
 #include <math.h>
 #define DELAY (600000)  
-volatile uint8_t game_started = 0;
+volatile uint8_t game_started_easy = 0;
+volatile uint8_t game_started_mid = 0;
+volatile uint8_t game_started_hard = 0;
 volatile uint8_t launch_ball = 0;
 volatile uint8_t is_collision = 0;
 #define MAX_BALLS 20 // 
@@ -123,20 +125,20 @@ void Rotate_Image(GameObject *obj)
 {
    char buf[64];
 
-    // ??????(? obj-> ??????????)
+  
     if (obj->old_x == -1) {
         obj->old_x = obj->center_x + (int)(obj->r * cos(obj->angle));
         obj->old_y = obj->center_y + (int)(obj->r * sin(obj->angle));
     }
 
-    // ???????????
+    
     obj->angle += obj->speed;
     if (obj->angle > 2 * 3.1415926) { obj->angle -= 2 * 3.1415926; }
 
     int new_x = obj->center_x + (int)(obj->r * cos(obj->angle));
     int new_y = obj->center_y + (int)(obj->r * sin(obj->angle));
 
-    // ??????
+    
     if (new_x != obj->old_x || new_y != obj->old_y) {
         sprintf(buf, "fill %d,%d,%d,%d,0", obj->old_x, obj->old_y, obj->w, obj->h);
         SendToScreen(buf);
@@ -149,47 +151,43 @@ void Rotate_Image(GameObject *obj)
     }
 }
 void launch_forward(){
- int old_x = -1; 
- int old_y = -1;
-    char buf[64];
+int old_x = -1; 
+int old_y = -1;
+char buf[64];
 int x0 = 119;
 int y0 = 382;
-    // ?????????
 int  step = 8;
-        old_x = x0;
-        old_y = y0;
-    // 2. ???????
+old_x = x0;
+old_y = y0;
+
     int new_x = x0 ;
     int new_y = y0 -1;
 
     while (1) {
         delay_cycles(DELAY);
-			new_y-=step;
+			  new_y-=step;
 
     // 3. ??????,???????
-    if ( new_y != old_y) {
-        // ? ????:????(0)?????
-        sprintf(buf, "fill %d,%d,%d,%d,0", old_x, old_y, 34, 34);
-        SendToScreen(buf);
-        
-        // ? ????:??????? 3D ?
-        sprintf(buf, "pic %d,%d,%d", new_x, new_y, 2);
-        SendToScreen(buf);
-        
-        // ????
-        old_x = new_x; 
-        old_y = new_y;
-    }
-		for(int i=0;i<active_balls;i++){
-						 Rotate_Image(&balls[i]);
-						}
-   
-		if(old_y <= 274){
-				
-			
-			
-		  return;
-		}
+				if ( new_y != old_y) {
+						// ? ????:????(0)?????
+						sprintf(buf, "fill %d,%d,%d,%d,0", old_x, old_y, 34, 34);
+						SendToScreen(buf);
+						
+						// ? ????:??????? 3D ?
+						sprintf(buf, "pic %d,%d,%d", new_x, new_y, 2);
+						SendToScreen(buf);
+						
+						// ????
+						old_x = new_x; 
+						old_y = new_y;
+				}
+				for(int i=0;i<active_balls;i++){
+									 Rotate_Image(&balls[i]);
+									}
+				 
+					if(old_y <= 274){
+						return;
+					}
 }}
 // ==========================================
 // ???????? (?? 1 ????,0 ????)
@@ -213,7 +211,7 @@ void Game_Over() {
     char buf[64];
     
     // 1. ??????????? Game Over!
-    SendToScreen("t0.txt=\"Game Over!\"");
+    SendToScreen("page over");
     
     // 2. ?????(?????????????)
     active_balls = 0;
@@ -285,7 +283,7 @@ int main(void)
 		
   
     /* ====== ????:?????? ====== */
-    while (game_started == 0) {
+    while (game_started_easy == 0) {
         // ?????????????,?????? 0x5A ??
 				DL_GPIO_togglePins(GPIO_LEDS_PORT,GPIO_LEDS_USER_LED_1_PIN);
 				delay_cycles(100000);
@@ -331,7 +329,13 @@ void UART_0_INST_IRQHandler(void) {
             uint8_t rx_data = DL_UART_Main_receiveData(UART_0_INST);
             
             if (rx_data == 0x5A) {
-                game_started = 1; // ?? 5A,????
+                game_started_easy = 1; // ?? 5A,????
+            }
+						 else if(rx_data == 0x5B) {
+                game_started_mid = 1;  // ?? 4A,????
+            }
+						  else if(rx_data == 0x5C) {
+               game_started_hard = 1;  // ?? 4A,????
             }
             else if(rx_data == 0x4A) {
                 launch_ball = 1;  // ?? 4A,????
