@@ -33,12 +33,15 @@
 #include "ti_msp_dl_config.h"
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 #define DELAY (600000)  
 volatile uint8_t game_started_easy = 0;
 volatile uint8_t game_started_mid = 0;
 volatile uint8_t game_started_hard = 0;
 volatile uint8_t launch_ball = 0;
 volatile uint8_t is_collision = 0;
+int max_score = 0;
 #define MAX_BALLS 20 // 
 
 
@@ -112,14 +115,56 @@ typedef struct {
     int h;          // ???
     int pic_id;     // ??ID
     float speed;    // ??
-    
-    // ?????? static ???????
     float angle;    
     int old_x;      
     int old_y;      
 } GameObject;
 
 	GameObject balls[MAX_BALLS];
+// ????????????,??? w ? h ??
+// ??????? 1 ???:?? ID
+GameObject Create_Ball(int pic_id,float sped) {
+    GameObject obj;
+    if(pic_id ==3){
+				obj.center_x = 113;      // ??????? X
+				obj.center_y = 161;      // ??????? Y
+				obj.r = 115;   }
+    // 1. ????????????
+		else{
+    obj.center_x = 120;      // ??????? X
+    obj.center_y = 168;      // ??????? Y
+    obj.r = 107;  
+		}			// ???????
+    obj.angle = 1.5708;      // ????????? (PI/2,????)
+    obj.old_x = -1;          // ??????
+    obj.old_y = -1;
+	
+    obj.speed = sped;
+    obj.pic_id = pic_id;
+
+    // 2. ????? pic_id,?????? (??????????)
+    switch(pic_id) {
+        case 2: // ????
+            obj.w = 34;
+            obj.h = 34;
+           
+            break;
+            
+        case 3: // ?? ID=3 ???“???”,?????
+            obj.w = 46;
+            obj.h = 46;
+         
+            break;
+            
+        default: // ?????
+            obj.w = 26;
+            obj.h = 26;
+            
+            break;
+    }
+    
+    return obj;
+}
 int active_balls = 0;
 void Rotate_Image(GameObject *obj)
 {
@@ -155,7 +200,7 @@ int old_x = -1;
 int old_y = -1;
 char buf[64];
 int x0 = 119;
-int y0 = 382;
+int y0 = 365;
 int  step = 8;
 old_x = x0;
 old_y = y0;
@@ -170,11 +215,11 @@ old_y = y0;
     // 3. ??????,???????
 				if ( new_y != old_y) {
 						// ? ????:????(0)?????
-						sprintf(buf, "fill %d,%d,%d,%d,0", old_x, old_y, 34, 34);
+						sprintf(buf, "fill %d,%d,%d,%d,0", old_x, old_y, 26, 26);
 						SendToScreen(buf);
 						
 						// ? ????:??????? 3D ?
-						sprintf(buf, "pic %d,%d,%d", new_x, new_y, 2);
+						sprintf(buf, "pic %d,%d,%d", new_x, new_y, 4);
 						SendToScreen(buf);
 						
 						// ????
@@ -185,7 +230,7 @@ old_y = y0;
 									 Rotate_Image(&balls[i]);
 									}
 				 
-					if(old_y <= 274){
+					if(old_y <= 276){
 						return;
 					}
 }}
@@ -199,7 +244,7 @@ uint8_t Check_Collision(int x1, int y1, int x2, int y2) {
     int dy = y1 - y2;
     
     // ???????,??????????? sqrt() ??!
-    if ((dx * dx + dy * dy) < (28* 28)) {
+    if ((dx * dx + dy * dy) < (34* 34)) {
         return 1; // ?? ????!
     }
     return 0;     // ??? ??
@@ -209,12 +254,21 @@ uint8_t Check_Collision(int x1, int y1, int x2, int y2) {
 // ==========================================
 void Game_Over() {
     char buf[64];
-    
+    game_started_easy = 0;
+		game_started_mid = 0;
+	  game_started_hard = 0;
     // 1. ??????????? Game Over!
-    SendToScreen("page over");
-    
+
+    if (active_balls > max_score) {
+        max_score = active_balls; // ???????
+    }
+		   SendToScreen("page over");
+		sprintf(buf, "t0.txt=\"Max: %d\"", max_score);
+    SendToScreen(buf);
     // 2. ?????(?????????????)
     active_balls = 0;
+		memset(balls, 0, sizeof(balls));
+ 
     // SendToScreen("fill 0,0,320,240,0");
  
 }
@@ -273,6 +327,7 @@ void Collision_Response(void)
 // ====================== ??? ======================
 int main(void)
 {
+	max_score = 0;
     SYSCFG_DL_init();
     __enable_irq();
 		LED_All_Off();
@@ -283,43 +338,112 @@ int main(void)
 		
   
     /* ====== ????:?????? ====== */
-    while (game_started_easy == 0) {
+    while (game_started_easy == 0&&game_started_mid == 0&&game_started_hard == 0) {
+				
         // ?????????????,?????? 0x5A ??
 				DL_GPIO_togglePins(GPIO_LEDS_PORT,GPIO_LEDS_USER_LED_1_PIN);
-				delay_cycles(100000);
+			delay_cycles(DELAY);
         
     }
 
     /* ====== ????:????,???????? ====== */
     // ?????????????
     SendToScreen("t0.txt=\"Score: 0\"");
-		
-while(1){
-	LED_Flow_Run();
-	delay_cycles(DELAY);
-		if(launch_ball == 1){
-			// ????:?????????????
-            if (active_balls < MAX_BALLS) {
-                
-                launch_forward(); // ????
-                
-                // ?? ????:??????????,?????????!
-                balls[active_balls] = (GameObject){120, 168, 107, 34, 34, 2, 0.05, 1.5708, -1, -1};
-               
-                active_balls++;   // ??????? +1
-            }
-            
-            launch_ball = 0;
-		}
-		for(int i=0;i<active_balls;i++){
-						 Rotate_Image(&balls[i]);
-						}
-    Detect_All_Balls_Collision();
-    Collision_Response();
-     
-	}
-}
+		while(1){
 
+							while(game_started_easy != 0){
+										LED_Flow_Run();
+										delay_cycles(DELAY);
+											if(launch_ball == 1){
+												// ????:?????????????
+																if (active_balls < MAX_BALLS) {
+																		
+																		launch_forward(); // ????
+																		
+																		// ?? ????:??????????,?????????!
+																		balls[active_balls] = (GameObject){120, 168, 107, 34, 34, 2, 0.05, 1.5708, -1, -1};
+																	 
+																		active_balls++;   // ??????? +1
+																		char buf[64];
+																		sprintf(buf, "t0.txt=\"Score: %d\"", active_balls);
+																		SendToScreen(buf);
+																}
+																
+																launch_ball = 0;
+												}
+										for(int i=0;i<active_balls;i++){
+														 Rotate_Image(&balls[i]);
+														}
+										game_started_easy = 1;
+										Detect_All_Balls_Collision();
+										Collision_Response();
+										
+									}
+							
+									
+									
+								while(game_started_mid != 0){
+										LED_Flow_Run();
+										delay_cycles(DELAY);
+											if(launch_ball == 1){
+												// ????:?????????????
+																int random_pic_id = (rand() % 3) + 2;
+																if (active_balls < MAX_BALLS) {
+																		
+																		launch_forward(); // ????
+																		
+																		// ?? ????:??????????,?????????!
+																		balls[active_balls] = Create_Ball(random_pic_id,0.05);
+																	 
+																		active_balls++;   // ??????? +1
+																	char buf[64];
+																		sprintf(buf, "t0.txt=\"Score: %d\"", active_balls);
+																		SendToScreen(buf);
+																}
+																
+																launch_ball = 0;
+												}
+										for(int i=0;i<active_balls;i++){
+														 Rotate_Image(&balls[i]);
+														}
+										game_started_mid = 1;
+										Detect_All_Balls_Collision();
+										Collision_Response();
+										 
+									}
+						while(game_started_hard != 0){
+										LED_Flow_Run();
+										delay_cycles(DELAY);
+											if(launch_ball == 1){
+												// ????:?????????????
+																	int random_pic_id = (rand() % 3) + 2;
+																if (active_balls < MAX_BALLS) {
+																		
+																		launch_forward(); // ????
+																		
+																		// ?? ????:??????????,?????????!
+																		balls[active_balls] =  Create_Ball(random_pic_id,0.10);
+																	 
+																		active_balls++;   // ??????? +1
+																	char buf[64];
+																		sprintf(buf, "t0.txt=\"Score: %d\"", active_balls);
+																		SendToScreen(buf);
+																}
+																
+																launch_ball = 0;
+												}
+										for(int i=0;i<active_balls;i++){
+														 Rotate_Image(&balls[i]);
+														}
+										game_started_hard = 1;
+										Detect_All_Balls_Collision();
+										Collision_Response();
+										 
+									}
+								
+							
+}
+}
 /* ====== ????:??????????? ====== */
 void UART_0_INST_IRQHandler(void) {
     switch (DL_UART_Main_getPendingInterrupt(UART_0_INST)) {
